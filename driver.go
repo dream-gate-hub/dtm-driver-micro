@@ -40,7 +40,7 @@ func (z *microDriver) RegisterService(target string, endpoint string) error {
 	case kindConsul:
 		r := consul.NewRegistry(registry.Addrs(u.Host))
 		serverName := strings.TrimPrefix(u.Path, "/")
-		r.Register(&registry.Service{
+		return r.Register(&registry.Service{
 			Name:    serverName,
 			Version: "v1.0.0",
 			Nodes: []*registry.Node{
@@ -91,4 +91,3 @@ func (z *microDriver) ParseServerMethod(uri string) (server string, method strin
 func init() {
 	dtmdriver.Register(&microDriver{})
 }
-
