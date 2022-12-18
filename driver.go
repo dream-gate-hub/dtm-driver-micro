@@ -62,6 +62,26 @@ func (z *microDriver) RegisterService(target string, endpoint string) error {
 	return nil
 }
 
+func methodToGRPC(service, method string) string {
+	// no method or already grpc method
+	if len(method) == 0 || method[0] == '/' {
+		return method
+	}
+
+	// assume method is Foo.Bar
+	mParts := strings.Split(method, ".")
+	if len(mParts) != 2 {
+		return method
+	}
+
+	if len(service) == 0 {
+		return fmt.Sprintf("/%s/%s", mParts[0], mParts[1])
+	}
+
+	// return /pkg.Foo/Bar
+	return fmt.Sprintf("/%s.%s/%s", service, mParts[0], mParts[1])
+}
+
 func (z *microDriver) ParseServerMethod(uri string) (server string, method string, err error) {
 	if !strings.Contains(uri, "//") {
 		sep := strings.IndexByte(uri, '/')
@@ -88,7 +108,14 @@ func (z *microDriver) ParseServerMethod(uri string) (server string, method strin
 			return "", "", fmt.Errorf("inavlid service name: %s", sName)
 		}
 
-		return services[0].Nodes[0].Address, "/" + sName + "/" + subStr[2], nil
+		sEndpoint := ""
+		for _, ep := range services[0].Endpoints {
+			if strings.Contains(ep.Name, subStr[2]) {
+				sEndpoint = ep.Name
+			}
+		}
+
+		return services[0].Nodes[0].Address, methodToGRPC(sName, sEndpoint), nil
 	}
 
 	return "", "", fmt.Errorf("bad url because of invalid scheme: %s", uri)
