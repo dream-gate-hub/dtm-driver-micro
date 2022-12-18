@@ -88,7 +88,7 @@ func (z *microDriver) ParseServerMethod(uri string) (server string, method strin
 			return "", "", fmt.Errorf("inavlid service name: %s", sName)
 		}
 
-		return services[0].Nodes[0].Address, subStr[2], nil
+		return services[0].Nodes[0].Address, "/" + sName + "/" + subStr[2], nil
 	}
 
 	return "", "", fmt.Errorf("bad url because of invalid scheme: %s", uri)
