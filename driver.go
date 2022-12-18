@@ -5,9 +5,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/dtm-labs/dtmdriver"
 	"github.com/go-micro/plugins/v4/registry/consul"
 	"go-micro.dev/v4/registry"
+
+	"github.com/dtm-labs/dtmdriver"
 )
 
 const (
@@ -16,7 +17,8 @@ const (
 )
 
 type (
-	microDriver struct{}
+	microDriver struct {
+	}
 )
 
 func (z *microDriver) GetName() string {
@@ -69,23 +71,27 @@ func (z *microDriver) ParseServerMethod(uri string) (server string, method strin
 		return uri[:sep], uri[sep:], nil
 
 	}
-	//resolve gozero consul wait=xx url.Parse no standard
 	if strings.Contains(uri, kindConsul) {
-		tmp := strings.Split(uri, "?")
-		sep := strings.IndexByte(tmp[1], '/')
-		if sep == -1 {
-			return "", "", fmt.Errorf("bad url: '%s'. no '/' found", uri)
+		tmp := strings.Split(uri, "//")
+		subStr := strings.Split(tmp[1], "/")
+		if len(subStr) < 3 {
+			return "", "", fmt.Errorf("bad url: %s", uri)
 		}
-		uri = tmp[0] + tmp[1][sep:]
+
+		cRegistry := consul.NewRegistry(func(options *registry.Options) {
+			options.Addrs = append(options.Addrs, subStr[0])
+		})
+
+		sName := subStr[1]
+		services, err := cRegistry.GetService(sName)
+		if err != nil || len(services) == 0 {
+			return "", "", fmt.Errorf("inavlid service name: %s", sName)
+		}
+
+		return services[0].Nodes[0].Address, subStr[2], nil
 	}
 
-	u, err := url.Parse(uri)
-	if err != nil {
-		return "", "", nil
-	}
-	index := strings.IndexByte(u.Path[1:], '/') + 1
-
-	return u.Scheme + "://" + u.Host + u.Path[:index], u.Path[index:], nil
+	return "", "", fmt.Errorf("bad url because of invalid scheme: %s", uri)
 }
 
 func init() {
